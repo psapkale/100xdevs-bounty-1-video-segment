@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+      <link
+         href="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.11.7/video-js.min.css"
+         rel="stylesheet"
+      />
+
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/7.11.7/video.min.js"></script>
+
+      <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-eme@3.8.0/dist/videojs-contrib-eme.js"></script>
+
+      <title>Test VideJS DRM</title>
+   </head>
+   <body>
+      <div style="margin: 50px auto">
+         <video
+            id="my-video"
+            class="video-js"
+            onloadedmetadata="assignTags(this)"
+         ></video>
+      </div>
+
+      <script>
+         // Update this array as per video time tags
+         var slots = [
+            { startTime: 10, title: 'Intro' },
+            { startTime: 45, title: 'Parkour 1' },
+            { startTime: 60, title: 'Parkour 2' },
+            { startTime: 120, title: 'Parkour 3' },
+         ];
+
+         // Seek to the desired segement
+         function scrollToSegment(slotIndex) {
+            console.log(slotIndex);
+            if (slotIndex >= 0 && slotIndex < slots.length) {
+               var startTime = slots[slotIndex].startTime;
+               player.currentTime(startTime);
+            } else {
+               alert('Invalid input');
+            }
+         }
+
+         function assignTags(player) {
+            // Allocate time tags
+            slots.map((slot, index) => {
+               var button = document.createElement('button');
+               button.textContent = slot.title;
+               button.addEventListener('click', () => scrollToSegment(index));
+
+               document.body.appendChild(button);
+            });
+
+            // Plot segments
+            var myPlayer = videojs('my-video');
+            var controlBar = myPlayer.controlBar;
+
+            slots.forEach((slot, i) => {
+               var mark = document.createElement('div');
+               mark.classList.add('segment-marker');
+
+               mark.title = slot.title;
+               mark.style.left =
+                  (slot.startTime * 100) / myPlayer.duration() + '%';
+               controlBar.progressControl.el().appendChild(mark);
+
+               mark.addEventListener('click', () =>
+                  player.currentTime(slot.startTime)
+               );
+            });
+         }
+
+         var player = videojs(
+            'my-video',
+            {
+               controls: true,
+               fluid: true,
+               html5: {
+                  vhs: {
+                     overrideNative: true,
+                  },
+               },
+            },
+            function () {
+               var player = this;
+               player.eme();
+               player.src({
+                  src: 'https://cdn.bitmovin.com/content/assets/art-of-motion_drm/mpds/11331.mpd',
+                  type: 'application/dash+xml',
+                  keySystems: {
+                     'com.widevine.alpha':
+                        'https://cwip-shaka-proxy.appspot.com/no_auth',
+                  },
+               });
+
+               player.ready(function () {
+                  player.tech(true).on('keystatuschange', function (event) {
+                     console.log('event: ', event);
+                  });
+               });
+            }
+         );
+      </script>
+
+      <style>
+         .segment-marker {
+            position: absolute;
+            bottom: 0;
+            width: 2px;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 1);
+            cursor: pointer;
+         }
+      </style>
+   </body>
+</html>
